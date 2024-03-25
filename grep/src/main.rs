@@ -20,7 +20,7 @@ fn handle_grep(regex: String, path: String) -> std::io::Result<()> {
             if let Some(pattern_match) = captures.get(0) {
                 let (start, end) = (pattern_match.start(), pattern_match.end());
                 let (before, matched, after) = (&line[..start], &line[start..end], &line[end..]);
-                println!("{}{}{}", before, matched.green(), after); 
+                println!("{}{}{}", before, matched.yellow(), after); 
             }
         }
     }
@@ -28,15 +28,12 @@ fn handle_grep(regex: String, path: String) -> std::io::Result<()> {
 }
 
 fn main() {
-    //Initializing variables to track...
     let mut regex_pattern: String = "".to_string();
     let mut files: Vec<String> = Vec::new(); 
     let mut is_extended: bool = false;
     let mut recurse_dirs: bool = false;
     let mut track_counts: bool = false;
     let args: Vec<String> = args().skip(1).collect();
-    //-----------------------------------------------
-    //Handling command line arguments...
     for arg in args {
         if arg.starts_with("-") {
             match &arg[1..] {
@@ -59,19 +56,8 @@ fn main() {
             } 
         }
     }
-    //----------------------------------------------
-    /*
-    if track_counts {
-        panic!("Unimplemented!")
-    }
-    else if recurse_dirs {
-        panic!("Unimplemented!")
-    }
-    else {
-    */
     for file in files {
         let _ = handle_grep(regex_pattern.clone(), file);
     }
-    //}
 }
 
