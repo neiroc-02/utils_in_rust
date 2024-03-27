@@ -43,8 +43,8 @@ fn handle_grep_count(regex: String, path: String) -> std::io::Result<()> {
 }
 
 //FIXME: This stalls on highly recursive directories
-fn parse_directories (path: String, files: &mut Vec<String>) {
-    let walker = WalkDir::new(&path).into_iter();
+fn parse_directories (path: String, files: &mut Vec<String>, symlinks: bool) {
+    let walker = WalkDir::new(&path).follow_links(symlinks).into_iter();
     for entry in walker.filter_map(Result::ok){
         let path_str = entry.path().to_str().unwrap().to_string();
         if path_str == path {
@@ -57,16 +57,21 @@ fn parse_directories (path: String, files: &mut Vec<String>) {
     }
 }
 
-//Consider adding support for -q, -E, -n, -R
+//Consider adding support for -q, -n
 fn main() {
     let mut regex_pattern: String = "".to_string();
     let mut files: Vec<String> = Vec::new(); 
     let mut recurse_dirs: bool = false;
+    let mut recurse_symlinks: bool = false;
     let mut track_counts: bool = false;
     let args: Vec<String> = args().skip(1).collect();
     for arg in args {
         if arg.starts_with("-") {
             match &arg[1..] {
+            "R" => {
+                recurse_symlinks = true;
+                recurse_dirs = true;
+            }
             "r" => recurse_dirs = true,
             "c" => track_counts = true,
             _ => panic!("Bad Argument!"),
@@ -85,10 +90,12 @@ fn main() {
                     if metadata.is_file() {
                         files.push(arg); 
                     }
-                    else if metadata.is_dir() {
-                        parse_directories(arg, &mut files)
+                    else if metadata.is_dir() && recurse_dirs {
+                        parse_directories(arg, &mut files, recurse_symlinks);
                     }
-                    //TODO: Consider adding functionality for symlinks
+                    else if metadata.is_symlink() && recurse_symlinks {
+                        parse_directories(arg, &mut files, recurse_symlinks)
+                    }
                 }
                 else { 
                     panic!("Invalid file: {}", arg);
