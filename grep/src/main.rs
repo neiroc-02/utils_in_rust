@@ -8,17 +8,22 @@ use colored::*;
 use num_cpus;
 use rayon::prelude::*;
 
-fn handle_grep(regex: String, path: String) -> std::io::Result<()> {
+fn handle_grep(regex: String, path: String, track_lines: bool) -> std::io::Result<()> {
     let re = Regex::new(&regex).unwrap();
     let mut f = File::open(&path)?;
     let mut contents = String::new();
     f.read_to_string(&mut contents)?;
-    for line in contents.lines() {
+    for (i, line) in contents.lines().enumerate() {
         if let Some(captures) = re.captures(line) {
             if let Some(pattern_match) = captures.get(0) {
                 let (start, end) = (pattern_match.start(), pattern_match.end());
                 let (before, matched, after) = (&line[..start], &line[start..end], &line[end..]);
-                println!("{}:{}{}{}", path.purple(), before, matched.blue(), after); 
+                if track_lines {
+                    println!("{}:{}:{}{}{}", path.purple(), (i+1).to_string().green(), before, matched.blue(), after); 
+                }
+                else {
+                    println!("{}:{}{}{}", path.purple(), before, matched.blue(), after); 
+                }
             }
         }
     }
@@ -36,13 +41,10 @@ fn handle_grep_count(regex: String, path: String) -> std::io::Result<()> {
             count = count + 1;
         }
     }
-    if count > 0 {
-        println!("{}:{}", path.purple(), count);
-    }
+    println!("{}:{}", path.purple(), count);
     Ok(())
 }
 
-//FIXME: This stalls on highly recursive directories
 fn parse_directories (path: String, files: &mut Vec<String>, symlinks: bool) {
     let walker = WalkDir::new(&path).follow_links(symlinks).into_iter();
     for entry in walker.filter_map(Result::ok){
@@ -57,13 +59,13 @@ fn parse_directories (path: String, files: &mut Vec<String>, symlinks: bool) {
     }
 }
 
-//Consider adding support for -q, -n
 fn main() {
     let mut regex_pattern: String = "".to_string();
     let mut files: Vec<String> = Vec::new(); 
     let mut recurse_dirs: bool = false;
     let mut recurse_symlinks: bool = false;
     let mut track_counts: bool = false;
+    let mut track_lines: bool = false;
     let args: Vec<String> = args().skip(1).collect();
     for arg in args {
         if arg.starts_with("-") {
@@ -72,6 +74,7 @@ fn main() {
                 recurse_symlinks = true;
                 recurse_dirs = true;
             }
+            "n" => track_lines = true,
             "r" => recurse_dirs = true,
             "c" => track_counts = true,
             _ => panic!("Bad Argument!"),
@@ -115,7 +118,7 @@ fn main() {
                         let _ = handle_grep_count(regex_pattern.clone(), file.clone());
                     } 
                     else {
-                        let _ = handle_grep(regex_pattern.clone(), file.clone());
+                        let _ = handle_grep(regex_pattern.clone(), file.clone(), track_lines);
                     }
                 }
             });
@@ -129,7 +132,7 @@ fn main() {
                     let _ = handle_grep_count(regex_pattern.clone(), file.clone());
                 }
                 else {
-                    let _ = handle_grep(regex_pattern.clone(), file.clone());
+                    let _ = handle_grep(regex_pattern.clone(), file.clone(), track_lines);
                 }
             }
         }
