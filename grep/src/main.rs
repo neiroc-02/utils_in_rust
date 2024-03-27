@@ -1,12 +1,8 @@
-#![allow(unused_imports)]       //To allow unused libraries
-#![allow(dead_code)]            //To allow stubs
-#![allow(unused_assignments)]   //To allow me to initialize variables
-#![allow(unused_variables)]     
 use std::{env::args, fs};
 use std::io::Read;
 use std::path::Path;
 use regex::Regex;                                
-use std::fs::{File, Metadata};
+use std::fs::File;
 use walkdir::WalkDir;
 use colored::*;
 use num_cpus;
@@ -46,28 +42,17 @@ fn handle_grep_count(regex: String, path: String) -> std::io::Result<()> {
     Ok(())
 }
 
+//FIXME: This stalls on highly recursive directories
 fn parse_directories (path: String, files: &mut Vec<String>) {
-    for entry in WalkDir::new(&path){
-        match entry {
-            Ok(entry) => {
-                let path_str = entry.path().to_str().unwrap().to_string();
-                if path_str == path {
-                    continue;
-                }
-                let metadata = fs::metadata(&path_str).unwrap();
-                if metadata.is_file() && !files.contains(&path_str) {
-                    //println!("Added file: {}", path_str);
-                    files.push(path_str)
-                }
-                else if metadata.is_dir() {
-                    //println!("Found dir: {}", path_str);
-                    parse_directories(path_str, files)
-                }
-                //TODO: Consider adding functionality for symlinks
-            }
-            Err(err) => {
-                panic!("Error!")
-            }
+    let walker = WalkDir::new(&path).into_iter();
+    for entry in walker.filter_map(Result::ok){
+        let path_str = entry.path().to_str().unwrap().to_string();
+        if path_str == path {
+            continue;
+        }
+        let metadata = fs::metadata(&path_str).unwrap();
+        if metadata.is_file() && !files.contains(&path_str) {
+            files.push(path_str)
         }
     }
 }
