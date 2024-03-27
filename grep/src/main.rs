@@ -40,7 +40,9 @@ fn handle_grep_count(regex: String, path: String) -> std::io::Result<()> {
             count = count + 1;
         }
     }
-    println!("{}:{}", path.purple(), count);
+    if count > 0 {
+        println!("{}:{}", path.purple(), count);
+    }
     Ok(())
 }
 
